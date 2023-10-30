@@ -34,6 +34,7 @@ const AllNfts = () => {
     const items = await Promise.all(
       data.map(async (i) => {
         const tokenUri = await marketContract.tokenURI(i.tokenId);
+        console.log(tokenUri);
         const meta = await axios.get(tokenUri);
         let price = ethers.utils.formatUnits(i.price.toString(), 'ether');
         let item = {

@@ -15,7 +15,7 @@ import AttachFileIcon from '@mui/icons-material/AttachFile';
 import SendIcon from '@mui/icons-material/Send';
 import CloseIcon from '@mui/icons-material/Close';
 import DialogBox from 'components/DialogBox';
-
+import axios from "axios";
 import web3 from 'web3';
 import Web3Modal from 'web3modal';
 import { ethers } from 'ethers';
@@ -72,7 +72,7 @@ const Form = () => {
 
   const projectId = process.env.INFURA_IPFS_ID;
   const projectSecret = process.env.INFURA_IPFS_SECRET;
-  const infuraDomain = process.env.INFURA_IPFS_DOMAIN;
+  //const infuraDomain = process.env.INFURA_IPFS_DOMAIN;
 
   const auth =
     'Basic ' + Buffer.from(projectId + ':' + projectSecret).toString('base64');
@@ -87,6 +87,7 @@ const Form = () => {
   });
 
   async function createSale(url) {
+    console.log("CreateSale");
     if (fileUrl) {
       const web3Modal = new Web3Modal({
         network: 'mainnet',
@@ -95,7 +96,7 @@ const Form = () => {
       const connection = await web3Modal.connect();
       const provider = new ethers.providers.Web3Provider(connection);
       const signer = provider.getSigner();
-
+         
       const price = web3.utils.toWei(formik.values.price, 'ether');
       let contract = new ethers.Contract(
         process.env.MARKETPLACE_ADDRESS,
@@ -109,7 +110,9 @@ const Form = () => {
       });
 
       try {
+        console.log("Wait start");
         await transaction.wait();
+        console.log("Wait end");
         setHash(transaction.hash);
         setDialogBoxOpen(true);
       } catch (error) {
@@ -131,10 +134,25 @@ const Form = () => {
   async function onChange(e) {
     const file = e.target.files[0];
     try {
-      const added = await client.add(file, {
-        progress: (prog) => console.log(`received: ${prog}`),
-      });
-      const url = `${infuraDomain}/ipfs/${added.path}`; //DEDICATED SUBDOMAIN FROM INFURA
+
+       console.log(file);
+      const formData = new FormData();
+                formData.append("file", file);
+
+                const resFile = await axios({
+                    method: "post",
+                    url: "https://api.pinata.cloud/pinning/pinFileToIPFS",
+                    data: formData,
+                    headers: {
+                       
+                    },
+                });
+
+      // const added = await client.add(file, {
+      //   progress: (prog) => console.log(`received: ${prog}`),
+      // });
+      const url = `https://gateway.pinata.cloud/ipfs/${resFile.data.IpfsHash}`;
+      //const url = `${infuraDomain}/ipfs/${added.path}`; //DEDICATED SUBDOMAIN FROM INFURA
       setFileUrl(url);
       console.log(url);
       setOpen(true);
@@ -155,9 +173,23 @@ const Form = () => {
       address,
       image: fileUrl,
     });
+    console.log(data);
     try {
-      const added = await client.add(data);
-      const url = `${infuraDomain}/ipfs/${added.path}`;
+
+     
+      const added = await axios({
+        method: "post",
+        url: "https://api.pinata.cloud/pinning/pinJSONToIPFS",
+        data: data,
+        headers: {
+            
+        },
+    });
+     console.log(added);
+      //const added = await client.add(data);
+      //const url = `${infuraDomain}/ipfs/${added.path}`;
+      const url = `https://gateway.pinata.cloud/ipfs/${added.data.IpfsHash}`;
+      console.log("create", url);
       createSale(url);
     } catch (error) {
       console.log('Error uploading file: ', error);
